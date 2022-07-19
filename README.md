@@ -1,7 +1,8 @@
 # HookLib
 A hooklib, featuring unique hooking methods
 
-Available Hooking Methods:\
+Available Hooking methods:
 VMTHook\
-VEH Hook by pointer destruction\
-CodeCave TrustedModule hook\
+VEH Hook by pointer destruction (faster than PAGE_GUARD)\
+CodeCave Trustedmodule hook\
+Trampoline hook
