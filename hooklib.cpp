@@ -1,5 +1,4 @@
 #include "hooklib.h"
-#include "csgocheat/Syscalls.h"
 
 HookLib g_HookLib{ };
 
@@ -101,9 +100,9 @@ BOOL HookLib::RestoreACHooks() {
     DWORD oProc;
     PVOID pVirtualQuery = VirtualQuery;
     SIZE_T iSize = 5;
-    NtProtectVirtualMemory(hProc, &pVirtualQuery, &iSize, PAGE_EXECUTE_READWRITE, &oProc);
+    VirtualProtect(pVirtualQuery, iSize, PAGE_EXECUTE_READWRITE, &oProc);
     memcpy(VirtualQuery, wOrigBytes, 5);
-    NtProtectVirtualMemory(hProc, &pVirtualQuery, &iSize, oProc, &oProc);
+    VirtualProtect(pVirtualQuery, iSize, oProc, &oProc);
 
     bACHooksOverwritten = false;
 
@@ -120,9 +119,9 @@ BOOL HookLib::DestroyPointers(int index) {
             DWORD oProc;
             LPVOID ppBaseFnc = (LPVOID)pBaseFnc.at(i);
             SIZE_T pSize = sizeof(pBaseFnc.at(i));
-            NtProtectVirtualMemory(hProc, &ppBaseFnc, &pSize, PAGE_EXECUTE_READWRITE, &oProc);
+            VirtualProtect(ppBaseFnc, pSize, PAGE_EXECUTE_READWRITE, &oProc);
             *((uintptr_t*)pBaseFnc.at(i)) = (uintptr_t)pPointerDestructor.at(i); // break pointer
-            NtProtectVirtualMemory(hProc, &ppBaseFnc, &pSize, oProc, &oProc);
+            VirtualProtect(ppBaseFnc, pSize, oProc, &oProc);
         }
     }
 
@@ -131,9 +130,9 @@ BOOL HookLib::DestroyPointers(int index) {
         DWORD oProc;
         LPVOID ppBaseFnc = (LPVOID)pBaseFnc.at(index);
         SIZE_T pSize = sizeof(pBaseFnc.at(index));
-        NtProtectVirtualMemory(hProc, &ppBaseFnc, &pSize, PAGE_EXECUTE_READWRITE, &oProc);
+        VirtualProtect(ppBaseFnc, pSize, PAGE_EXECUTE_READWRITE, &oProc);
         *((uintptr_t*)pBaseFnc.at(index)) = (uintptr_t)pPointerDestructor.at(index); // break pointer
-        NtProtectVirtualMemory(hProc, &ppBaseFnc, &pSize, oProc, &oProc);
+        VirtualProtect(ppBaseFnc, pSize, oProc, &oProc);
     }
 
     // if we arrive here all hooks have successfully been placed
@@ -166,9 +165,9 @@ LPVOID HookLib::AddHook(PVOID pHkFunc, PVOID pVTable, INT16 iIndex, const char* 
 VOID HookLib::Patch(char* dst, char* src, SIZE_T len) {
     //NtProtectVirtualMemory(hProc, &ppCodeCave, (PSIZE_T)&size, PAGE_EXECUTE_READWRITE, &oProc);
     DWORD oProc;
-    NtProtectVirtualMemory(hProc, (LPVOID*)&dst, &len, PAGE_EXECUTE_READWRITE, &oProc); //VirtualProtect(dst, len, PAGE_EXECUTE_READWRITE, &oProc);
+    VirtualProtect(dst, len, PAGE_EXECUTE_READWRITE, &oProc);
     memcpy(dst, src, len);
-    //NtProtectVirtualMemory(hProc, (LPVOID*)&dst, &len, oProc, &oProc);                  //VirtualProtect(dst, len, oProc, &oProc);
+    VirtualProtect(dst, len, oProc, &oProc);
 }
 
 BOOL HookLib::Hook(char* src, char* dst, SIZE_T len) {
@@ -193,7 +192,7 @@ void* HookLib::AddHook(char* src, char* dst, short len) {
     SIZE_T allocateLen = len + 5;
     char* gateway = 0;
 
-    NtAllocateVirtualMemory(hProc, (PVOID*)&gateway, 0, &allocateLen, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    VirtualAlloc(gateway, allocateLen, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (!gateway)
         return nullptr;
 
@@ -257,7 +256,7 @@ void* HookLib::AddHook(const char* cModuleName, void* pVirtualTable, void* pTarg
     LPVOID ppCodeCave = (LPVOID)pCodeCave;
     LPVOID ppEntry = (LPVOID)pEntry;
 
-    NtProtectVirtualMemory(hProc, &ppCodeCave, (PSIZE_T)&size, PAGE_EXECUTE_READWRITE, &oProc);
+    VirtualProtect(ppCodeCave, size, PAGE_EXECUTE_READWRITE, &oProc);
     *(uintptr_t*)(pCodeCave) = (char)0x8B;
     *(uintptr_t*)(pCodeCave + 0x01) = (char)0xED;
     *(uintptr_t*)(pCodeCave + 0x02) = (char)0xE9;
@@ -266,7 +265,7 @@ void* HookLib::AddHook(const char* cModuleName, void* pVirtualTable, void* pTarg
 
 
     // swap pointer to our code cave
-    NtProtectVirtualMemory(hProc, &ppEntry, (PSIZE_T)&sizeOfEntry, PAGE_EXECUTE_WRITECOPY, &oProc);
+    VirtualProtect(ppEntry, sizeOfEntry, PAGE_EXECUTE_WRITECOPY, &oProc);
     *(uintptr_t*)pEntry = (uintptr_t)pCodeCave;
     // dont restore to keep execute priviliges
 
